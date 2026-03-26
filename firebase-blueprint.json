@@ -1,0 +1,72 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "Stores user information, tokens, and settings.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Unique identifier for the user." },
+        "email": { "type": "string", "format": "email", "description": "User's email address." },
+        "displayName": { "type": "string", "description": "User's display name." },
+        "photoURL": { "type": "string", "description": "User's profile photo URL." },
+        "tokens": { "type": "integer", "description": "Number of V-Tokens the user has." },
+        "role": { "type": "string", "enum": ["user", "admin"], "description": "User's role in the application." },
+        "joinedAt": { "type": "string", "format": "date-time", "description": "When the user joined." },
+        "theme": {
+          "type": "object",
+          "properties": {
+            "primary": { "type": "string" },
+            "background": { "type": "string" },
+            "card": { "type": "string" },
+            "text": { "type": "string" },
+            "muted": { "type": "string" },
+            "border": { "type": "string" },
+            "isDarkMode": { "type": "boolean" },
+            "useGradient": { "type": "boolean" }
+          }
+        },
+        "adsWatched": { "type": "integer", "description": "Number of ads watched today." },
+        "lastDailyReward": { "type": "string", "format": "date-time", "description": "Last time the daily reward was claimed." }
+      },
+      "required": ["uid", "email", "tokens", "role"]
+    },
+    "HistoryItem": {
+      "title": "Try-On History",
+      "description": "Stores a single virtual try-on result.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "userImage": { "type": "string", "description": "Base64 or URL of the user image." },
+        "clothImage": { "type": "string", "description": "Base64 or URL of the cloth image." },
+        "resultImage": { "type": "string", "description": "Base64 or URL of the processed result." },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "userImage", "clothImage", "resultImage", "createdAt"]
+    },
+    "MarketingSettings": {
+      "title": "Marketing Settings",
+      "description": "Admin settings for sales and marketing.",
+      "type": "object",
+      "properties": {
+        "saleName": { "type": "string" },
+        "discountPercentage": { "type": "integer" },
+        "isSaleActive": { "type": "boolean" }
+      }
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles and settings."
+    },
+    "/history/{historyId}": {
+      "schema": "HistoryItem",
+      "description": "Virtual try-on history records."
+    },
+    "/settings/marketing": {
+      "schema": "MarketingSettings",
+      "description": "Global marketing settings."
+    }
+  }
+}

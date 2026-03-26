@@ -1,0 +1,118 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {userId}
+    // Fields:
+    //   - uid: string (required)
+    //   - email: string (required, format: email)
+    //   - displayName: string
+    //   - photoURL: string
+    //   - tokens: number (required)
+    //   - role: string (required, enum: ['user', 'admin'])
+    //   - joinedAt: timestamp
+    //   - theme: map (optional)
+    //   - adsWatched: number
+    //   - lastDailyReward: timestamp
+    //
+    // Collection: history
+    // Document ID: {historyId}
+    // Fields:
+    //   - id: string (required)
+    //   - userId: string (required)
+    //   - userImage: string (required)
+    //   - clothImage: string (required)
+    //   - resultImage: string (required)
+    //   - createdAt: timestamp (required)
+    //
+    // Collection: settings
+    // Document ID: marketing
+    // Fields:
+    //   - saleName: string
+    //   - discountPercentage: number
+    //   - isSaleActive: bool
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+         (request.auth.token.email == "mahakalchauhan0007@gmail.com" && request.auth.token.email_verified == true) ||
+         (request.auth.token.email == "admin@vtry.com"));
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function isValidUser(data) {
+      return hasRequiredFields(['uid', 'email', 'tokens', 'role']) &&
+             data.uid is string && data.uid.size() > 0 &&
+             isValidEmail(data.email) &&
+             (data.tokens is number || data.tokens == '∞') &&
+             data.role in ['user', 'admin'];
+    }
+
+    function isValidHistory(data) {
+      return hasRequiredFields(['userId', 'userImage', 'clothImage', 'resultImage', 'createdAt']) &&
+             data.userId is string && data.userId.size() > 0 &&
+             data.userImage is string && data.userImage.size() < 2000000 &&
+             data.clothImage is string && data.clothImage.size() < 2000000 &&
+             data.resultImage is string && data.resultImage.size() < 2000000 &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidMarketing(data) {
+      return data.saleName is string &&
+             data.discountPercentage is number &&
+             data.isSaleActive is bool;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isAuthenticated() && isValidUser(request.resource.data) && (isOwner(userId) || isAdmin());
+      allow update: if isAuthenticated() && isValidUser(request.resource.data) && (isOwner(userId) || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    match /history/{historyId} {
+      allow read: if isAuthenticated() && (request.auth.uid == resource.data.userId || isAdmin());
+      allow create: if isAuthenticated() && isValidHistory(request.resource.data) && request.auth.uid == request.resource.data.userId;
+      allow update: if isAuthenticated() && isValidHistory(request.resource.data) && request.auth.uid == resource.data.userId;
+      allow delete: if isAuthenticated() && (request.auth.uid == resource.data.userId || isAdmin());
+    }
+
+    match /settings/marketing {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() && isValidMarketing(request.resource.data);
+    }
+
+    // Default deny
+    match /{path=**} {
+      allow read, write: if false;
+    }
+  }
+}
